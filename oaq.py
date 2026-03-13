@@ -1,5 +1,6 @@
 board = [0] * 12
-
+player1_score = 0
+player2_score = 0
 
 def init_board():
     board[0] = 10
@@ -24,7 +25,10 @@ def print_board():
         print(board[i], end=" ")
     print("\n")
 
-def move(pos, direction):
+def move(pos, direction, player):
+
+    global player1_score, player2_score
+
 
     stones = board[pos]
     board[pos] = 0
@@ -53,6 +57,13 @@ def move(pos, direction):
             while board[next_pos] == 0 and board[next_next] > 0:
                 print("Ăn", board[next_next], "quân ở ô", next_next)
 
+                eaten = board[next_next]
+
+                if player == 1:
+                    player1_score += eaten
+                else:
+                    player2_score += eaten
+
                 board[next_next] = 0
 
                 pos = next_next
@@ -61,10 +72,15 @@ def move(pos, direction):
 
             break
 
+
         # các trường hợp còn lại -> hết lượt
         else:
             break
 
+
+def print_score():
+    print("Điểm Player 1:", player1_score)
+    print("Điểm Player 2:", player2_score)
 
 def game():
 
@@ -74,13 +90,17 @@ def game():
     while True:
 
         print_board()
+        print_score()
 
         pos = int(input(f"Player {player} chọn ô: "))
         direction = int(input("Hướng (1 phải, -1 trái): "))
 
-        move(pos, direction)
+        move(pos, direction,player)
 
-        player = 3 - player
+        if player == 1:
+            player =2
+        else:
+            player =1
 
 
 game()
