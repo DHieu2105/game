@@ -46,6 +46,27 @@ def get_valid_move(player):
 
         return pos, direction
 
+def check_empty_side(player):
+    if player == 1:
+        return all(board[i] == 0 for i in range(1,6))
+    else:
+        return all(board[i] == 0 for i in range(7,12))
+
+def refill(player):
+    global player1_score, player2_score
+
+    print(f"⚠️ Player {player} hết quân, rải lại (-5 điểm)")
+
+    if player == 1:
+        for i in range(1,6):
+            board[i] = 1
+        player1_score -= 5
+
+    else:
+        for i in range(7,12):
+            board[i] = 1
+        player2_score -= 5
+
 def move(pos, direction, player):
     global player1_score, player2_score
 
@@ -166,6 +187,10 @@ def game():
 
         print_board()
         print_score()
+
+        # ===== kiểm tra hết quân =====
+        if check_empty_side(player):
+            refill(player)
 
         # ===== AI =====
         if mode == 2 and player == 2:
