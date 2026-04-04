@@ -1,77 +1,46 @@
 import random
+import math
 
+# ===== GLOBAL STATE =====
 board = [0] * 12
 player1_score = 0
 player2_score = 0
 difficulty = 2
 
-
+# ===== INIT =====
 def init_board():
-    board[0] = 5
-    board[6] = 5
-
+    for i in range(12):
+        board[i] = 0
+    board[0] = board[6] = 5
     for i in range(1, 6):
         board[i] = 5
     for i in range(7, 12):
         board[i] = 5
 
-
+# ===== UTIL =====
 def print_board():
-    print("      ", end="")
-    for i in range(11, 6, -1):
-        print(board[i], end=" ")
-    print()
-
+    print("      ", *[board[i] for i in range(11, 6, -1)])
     print(board[0], "             ", board[6])
-
-    print("      ", end="")
-    for i in range(1, 6):
-        print(board[i], end=" ")
-    print("\n")
-
-
-def get_valid_move(player):
-    while True:
-        pos = int(input(f"Player {player} chọn ô: "))
-        direction = int(input("Hướng (1 phải, -1 trái): "))
-
-        if player == 1 and pos not in range(1, 6):
-            print("Player 1 chỉ được chọn ô từ 1 → 5")
-            continue
-
-        if player == 2 and pos not in range(7, 12):
-            print("Player 2 chỉ được chọn ô từ 7 → 11")
-            continue
-
-        if board[pos] == 0:
-            print("Ô này không có quân, chọn lại")
-            continue
-
-        return pos, direction
+    print("      ", *[board[i] for i in range(1, 6)], "\n")
 
 
 def check_empty_side(player):
-    if player == 1:
-        return all(board[i] == 0 for i in range(1, 6))
-    else:
-        return all(board[i] == 0 for i in range(7, 12))
+    return all(board[i] == 0 for i in (range(1, 6) if player == 1 else range(7, 12)))
 
 
 def refill(player):
     global player1_score, player2_score
-
     print(f"⚠️ Player {player} hết quân, rải lại (-5 điểm)")
-
+    indices = range(1, 6) if player == 1 else range(7, 12)
+    for i in indices:
+        board[i] = 1
     if player == 1:
-        for i in range(1, 6):
-            board[i] = 1
         player1_score -= 5
     else:
-        for i in range(7, 12):
-            board[i] = 1
         player2_score -= 5
 
 
+# ===== MOVE LOGIC =====
 def move(pos, direction, player):
     global player1_score, player2_score
 
@@ -79,7 +48,6 @@ def move(pos, direction, player):
     board[pos] = 0
 
     while True:
-
         while stones > 0:
             pos = (pos + direction) % 12
             board[pos] += 1
@@ -88,180 +56,145 @@ def move(pos, direction, player):
         next_pos = (pos + direction) % 12
         next_next = (pos + 2 * direction) % 12
 
-        # bốc tiếp
-        if board[next_pos] > 0 and next_pos not in [0, 6]:
+        # Continue picking
+        if board[next_pos] > 0 and next_pos not in (0, 6):
             stones = board[next_pos]
             board[next_pos] = 0
             pos = next_pos
             continue
 
-        # ăn quân
+        # Capture
         if board[next_pos] == 0 and board[next_next] > 0:
             while board[next_pos] == 0 and board[next_next] > 0:
-
                 eaten = board[next_next]
-                print("Ăn", eaten, "quân ở ô", next_next)
-
                 if player == 1:
                     player1_score += eaten
                 else:
                     player2_score += eaten
 
                 board[next_next] = 0
-
                 pos = next_next
                 next_pos = (pos + direction) % 12
                 next_next = (pos + 2 * direction) % 12
-
-            break
-        else:
-            break
+        break
 
 
+# ===== GAME STATE =====
 def is_game_over():
     return board[0] == 0 and board[6] == 0
 
 
 def final_score():
     global player1_score, player2_score
-
     for i in range(1, 6):
         player1_score += board[i]
         board[i] = 0
-
     for i in range(7, 12):
         player2_score += board[i]
         board[i] = 0
 
 
-def print_score():
-    print("Điểm Player 1:", player1_score)
-    print("Điểm Player 2:", player2_score)
-
-
-def show_winner():
-    print("\n===== KẾT THÚC GAME =====")
-    print("Player 1:", player1_score)
-    print("Player 2:", player2_score)
-
-    if player1_score > player2_score:
-        print("🏆 Player 1 thắng!")
-    elif player2_score > player1_score:
-        print("🏆 Player 2 thắng!")
-    else:
-        print("🤝 Hòa!")
-
-
 def evaluate():
-    if difficulty == 1:
-        return 0
     return player2_score - player1_score
 
 
+# ===== STATE SAVE / RESTORE =====
+def save_state():
+    return board.copy(), player1_score, player2_score
+
+
+def restore_state(state):
+    global player1_score, player2_score
+    b, p1, p2 = state
+    board[:] = b
+    player1_score = p1
+    player2_score = p2
+
+
+# ===== AI =====
+def get_possible_moves(player):
+    moves = []
+    indices = range(7, 12) if player == 2 else range(1, 6)
+    for i in indices:
+        if board[i] > 0:
+            moves.append((i, 1))
+            moves.append((i, -1))
+    return moves
+
+
 def ai_move():
-
-    # ===== EASY =====
+    # EASY
     if difficulty == 1:
-        possible = []
+        moves = get_possible_moves(2)
+        return random.choice(moves) if moves else None
 
-        for i in range(7, 12):
-            if board[i] > 0:
-                possible.append((i, 1))
-                possible.append((i, -1))
-
-        return random.choice(possible)
-
-    # ===== HARD =====
-    best_score = -9999
+    # HARD (Minimax depth = 2)
+    best_score = -math.inf
     best_move = None
 
-    for i in range(7, 12):
-        if board[i] == 0:
-            continue
+    for move_ai in get_possible_moves(2):
+        state_ai = save_state()
+        move(*move_ai, 2)
 
-        for direction in [1, -1]:
+        worst_case = math.inf
 
-            backup_board = board.copy()
-            backup_p1 = player1_score
-            backup_p2 = player2_score
+        for move_p in get_possible_moves(1):
+            state_p = save_state()
+            move(*move_p, 1)
 
-            move(i, direction, 2)
+            score = evaluate()
+            worst_case = min(worst_case, score)
 
-            worst_case = 9999
+            restore_state(state_p)
 
-            for j in range(1, 6):
-                if board[j] == 0:
-                    continue
+        restore_state(state_ai)
 
-                for d in [1, -1]:
-
-                    b2 = board.copy()
-                    p1_2 = player1_score
-                    p2_2 = player2_score
-
-                    move(j, d, 1)
-
-                    score = evaluate()
-                    worst_case = min(worst_case, score)
-
-                    # restore
-                    board[:] = b2
-                    globals()['player1_score'] = p1_2
-                    globals()['player2_score'] = p2_2
-
-            # restore
-            board[:] = backup_board
-            globals()['player1_score'] = backup_p1
-            globals()['player2_score'] = backup_p2
-
-            if worst_case > best_score:
-                best_score = worst_case
-                best_move = (i, direction)
+        if worst_case > best_score:
+            best_score = worst_case
+            best_move = move_ai
 
     return best_move
 
 
+# ===== MAIN GAME =====
 def game():
     global difficulty, player1_score, player2_score
 
     init_board()
-    player1_score = 0
-    player2_score = 0
+    player1_score = player2_score = 0
 
     player = 1
 
     mode = int(input("Chọn chế độ (1: PvP, 2: PvAI): "))
-
     if mode == 2:
         difficulty = int(input("Độ khó AI (1: Dễ, 2: Khó): "))
-    else:
-        difficulty = 2
 
     while True:
-
         if is_game_over():
             final_score()
             print_board()
-            show_winner()
+            print("Player 1:", player1_score)
+            print("Player 2:", player2_score)
             break
 
         print_board()
-        print_score()
+        print("P1:", player1_score, "| P2:", player2_score)
 
         if check_empty_side(player):
             refill(player)
 
-        # AI
         if mode == 2 and player == 2:
             print("🤖 AI đang suy nghĩ...")
-            pos, direction = ai_move()
-            print("AI chọn:", pos, "hướng", direction)
-            move(pos, direction, 2)
+            move_ai = ai_move()
+            if move_ai:
+                move(*move_ai, 2)
         else:
-            pos, direction = get_valid_move(player)
+            pos = int(input(f"Player {player} chọn ô: "))
+            direction = int(input("Hướng (1 phải, -1 trái): "))
             move(pos, direction, player)
 
         player = 2 if player == 1 else 1
 
 
-game()
+if __name__ == "__main__":
+    game()
